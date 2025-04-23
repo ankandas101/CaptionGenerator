@@ -1,8 +1,5 @@
 <?php
-// Ensure no output before headers
-ob_start();
-
-// Set proper headers
+// Ensure we're sending JSON response
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -10,8 +7,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Don't display errors to the client
-ini_set('log_errors', 1); // Log errors instead
+ini_set('display_errors', 1);
 
 // Function to send JSON response
 function sendJsonResponse($data, $statusCode = 200) {
@@ -20,7 +16,7 @@ function sendJsonResponse($data, $statusCode = 200) {
     exit;
 }
 
-// Check request method
+// Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendJsonResponse(['error' => 'Method not allowed'], 405);
 }
@@ -29,17 +25,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-// Validate input
+// Check if JSON is valid
 if (json_last_error() !== JSON_ERROR_NONE) {
-    sendJsonResponse(['error' => 'Invalid JSON input'], 400);
+    sendJsonResponse(['error' => 'Invalid JSON input: ' . json_last_error_msg()], 400);
 }
 
+// Check if keyword exists
 if (!isset($data['keyword'])) {
     sendJsonResponse(['error' => 'Keyword is required'], 400);
 }
 
 $keyword = $data['keyword'];
-$apiKey = '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';
+$apiKey = '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';
 
 // Split keywords if multiple are provided
 $keywords = array_map('trim', explode(',', $keyword));
@@ -102,7 +99,7 @@ try {
 
     $result = json_decode($response, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Invalid JSON response from API');
+        throw new Exception('Failed to decode API response: ' . json_last_error_msg());
     }
 
     // Check for the response in the correct format
