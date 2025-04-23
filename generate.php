@@ -1,4 +1,8 @@
 <?php
+// Ensure no output before headers
+ob_start();
+
+// Set proper headers
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -6,20 +10,32 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Don't display errors to the client
+ini_set('log_errors', 1); // Log errors instead
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed']);
+// Function to send JSON response
+function sendJsonResponse($data, $statusCode = 200) {
+    http_response_code($statusCode);
+    echo json_encode($data);
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+// Check request method
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    sendJsonResponse(['error' => 'Method not allowed'], 405);
+}
+
+// Get JSON input
+$input = file_get_contents('php://input');
+$data = json_decode($input, true);
+
+// Validate input
+if (json_last_error() !== JSON_ERROR_NONE) {
+    sendJsonResponse(['error' => 'Invalid JSON input'], 400);
+}
 
 if (!isset($data['keyword'])) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Keyword is required']);
-    exit;
+    sendJsonResponse(['error' => 'Keyword is required'], 400);
 }
 
 $keyword = $data['keyword'];
@@ -35,89 +51,78 @@ if (count($keywords) > 1) {
     $prompt = "Generate a short (1-2 lines), emotional, and engaging Facebook-style caption in Bengali about {$keyword}. The caption should be catchy, creative, and relatable for young Bangladeshi audiences. Use poetic or romantic tones if suitable. Include emojis to enhance expression.";
 }
 
-$ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'Authorization: Bearer ' . $apiKey,
-    'HTTP-Referer: http://localhost/caption/',
-    'X-Title: Bengali Caption Generator'
-]);
+try {
+    $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+    if ($ch === false) {
+        throw new Exception('Failed to initialize cURL');
+    }
 
-$postData = [
-    'model' => 'openai/gpt-4.1-mini',
-    'messages' => [
-        [
-            'role' => 'user',
-            'content' => [
-                [
-                    'type' => 'text',
-                    'text' => $prompt . " Generate 4 different variations of this caption. Each caption should be on a new line."
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $apiKey,
+        'HTTP-Referer: http://localhost/caption/',
+        'X-Title: Bengali Caption Generator'
+    ]);
+
+    $postData = [
+        'model' => 'openai/gpt-4.1-mini',
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'text',
+                        'text' => $prompt . " Generate 4 different variations of this caption. Each caption should be on a new line."
+                    ]
                 ]
             ]
-        ]
-    ],
-    'temperature' => 0.7,
-    'max_tokens' => 500
-];
+        ],
+        'temperature' => 0.7,
+        'max_tokens' => 500
+    ];
 
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-// Log the response for debugging
-error_log("API Response: " . $response);
-error_log("HTTP Code: " . $httpCode);
-
-if ($response === false) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Curl error: ' . curl_error($ch)]);
-    curl_close($ch);
-    exit;
-}
-
-curl_close($ch);
-
-if ($httpCode !== 200) {
-    http_response_code(500);
-    $errorData = json_decode($response, true);
-    $errorMessage = isset($errorData['error']['message']) ? $errorData['error']['message'] : 'Failed to generate caption';
-    echo json_encode(['error' => $errorMessage]);
-    exit;
-}
-
-$result = json_decode($response, true);
-
-// Log the decoded result for debugging
-error_log("Decoded Result: " . print_r($result, true));
-
-// Check for the response in the correct format
-if (!isset($result['choices'][0]['message']['content'])) {
-    // Try alternative response format
-    if (isset($result['choices'][0]['text'])) {
-        $captions = explode("\n", $result['choices'][0]['text']);
-        $captions = array_filter($captions, 'trim'); // Remove empty lines
-        $captions = array_slice($captions, 0, 4); // Take only first 4 captions
-    } else {
-        error_log("API Response Structure: " . print_r($result, true));
-        http_response_code(500);
-        echo json_encode(['error' => 'Invalid response format from API: ' . json_encode($result)]);
-        exit;
+    if ($response === false) {
+        throw new Exception('Curl error: ' . curl_error($ch));
     }
-} else {
-    $captions = explode("\n", $result['choices'][0]['message']['content']);
+
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        $errorData = json_decode($response, true);
+        $errorMessage = isset($errorData['error']['message']) ? $errorData['error']['message'] : 'Failed to generate caption';
+        throw new Exception($errorMessage);
+    }
+
+    $result = json_decode($response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON response from API');
+    }
+
+    // Check for the response in the correct format
+    if (!isset($result['choices'][0]['message']['content'])) {
+        if (isset($result['choices'][0]['text'])) {
+            $captions = explode("\n", $result['choices'][0]['text']);
+        } else {
+            throw new Exception('Invalid response format from API');
+        }
+    } else {
+        $captions = explode("\n", $result['choices'][0]['message']['content']);
+    }
+
     $captions = array_filter($captions, 'trim'); // Remove empty lines
     $captions = array_slice($captions, 0, 4); // Take only first 4 captions
-}
 
-// Ensure we're sending a valid JSON response
-if (json_last_error() !== JSON_ERROR_NONE) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Failed to encode response: ' . json_last_error_msg()]);
-    exit;
-}
+    sendJsonResponse(['captions' => $captions]);
 
-echo json_encode(['captions' => $captions]);
+} catch (Exception $e) {
+    error_log("Error in generate.php: " . $e->getMessage());
+    sendJsonResponse(['error' => $e->getMessage()], 500);
+}
 ?>
