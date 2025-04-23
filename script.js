@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (generateMoreBtn) generateMoreBtn.disabled = true;
 
         try {
-            const response = await fetch('generate.php', {
+            const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
