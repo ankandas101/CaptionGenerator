@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bengali Caption Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Bengali Caption Generator</h1>
+        
+        <div class="input-section">
+            <div class="keyword-input">
+                <input type="text" id="keyword" placeholder="ক্যাপশন টপিক লিখুন অথবা নিচে থেকে বেছে নিন এবং ক্যাপশন জেনারেট বাটনে ক্লিক করুন">
+            </div>
+            
+            <div class="keyword-buttons">
+                <button class="keyword-btn" data-keyword="Love">Love</button>
+                <button class="keyword-btn" data-keyword="Friendship">Friendship</button>
+                <button class="keyword-btn" data-keyword="Life">Life</button>
+                <button class="keyword-btn" data-keyword="Success">Success</button>
+                <button class="keyword-btn" data-keyword="Motivation">Motivation</button>
+                <button class="keyword-btn" data-keyword="Happiness">Happiness</button>
+                <button class="keyword-btn" data-keyword="Dream">Dream</button>
+                <button class="keyword-btn" data-keyword="Hope">Hope</button>
+                <button class="keyword-btn" data-keyword="Travel">Travel</button>
+                <button class="keyword-btn" data-keyword="Family">Family</button>
+                <button class="keyword-btn" data-keyword="Nature">Nature</button>
+                <button class="keyword-btn" data-keyword="Peace">Peace</button>
+            </div>
+            
+            <div id="selectedKeywordsList" class="selected-keywords"></div>
+            
+            <button id="generateBtn" class="generate-btn">Generate</button>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Generating captions...</p>
+        </div>
+
+        <div id="result" class="result hidden">
+            <div id="captionsContainer" class="captions-container"></div>
+            <button id="generateMoreBtn" class="generate-more-btn hidden">Generate More</button>
+        </div>
+        <div class="version">| <a href="https://fb.com/ankandas.fb" target="_blank"> &copy; Ankan </a> v1.2 |</div>
+    </div>
+    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+</body>
+</html> 
